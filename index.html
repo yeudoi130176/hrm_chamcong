@@ -3,37 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Hệ Thống HRM Chấm Công (Bản Chuẩn)</title>
+  <title>Hệ Thống Quản Trị Nhân Sự - HRM</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
     body, html { width: 100%; height: 100%; overflow: hidden; background: #f0f9ff; }
     #hrm-frame { width: 100%; height: 100%; border: none; display: block; }
 
+    /* Modal Camera chuyên nghiệp */
     #camera-modal {
       display: none; position: fixed; inset: 0; z-index: 99999;
-      background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px);
+      background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(6px);
       align-items: center; justify-content: center; padding: 16px;
     }
     .camera-box {
-      background: white; width: 100%; max-width: 420px; border-radius: 18px;
-      padding: 20px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+      background: white; width: 100%; max-width: 400px; border-radius: 20px;
+      padding: 24px 20px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      animation: modalSlideIn 0.25s ease-out;
     }
-    .camera-title { color: #0284c7; font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; }
+    @keyframes modalSlideIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .camera-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .camera-title { color: #0369a1; font-weight: 700; font-size: 1.05rem; }
     
+    /* Thanh trạng thái tinh tế */
     #status-log {
-      font-size: 0.95rem; padding: 12px; border-radius: 10px;
-      background: #e0f2fe; color: #0369a1; margin-bottom: 12px; font-weight: 600;
-      word-break: break-word; line-height: 1.4;
+      font-size: 0.88rem; padding: 10px 14px; border-radius: 10px;
+      background: #f0f9ff; color: #0284c7; margin-bottom: 14px; font-weight: 500;
+      border: 1px solid #bae6fd; text-align: left; display: flex; align-items: center; gap: 8px;
     }
-    #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #38bdf8; min-height: 220px; margin-bottom: 14px; background: #f8fafc; }
     
+    #reader { width: 100%; border-radius: 14px; overflow: hidden; border: 2px dashed #7dd3fc; min-height: 240px; margin-bottom: 16px; background: #f8fafc; }
+    
+    /* Nút bấm Pill-shaped chuẩn 40px */
     .btn-pill {
       height: 40px; width: 100%; border: none; border-radius: 999px;
-      font-weight: 600; font-size: 0.92rem; cursor: pointer; margin-top: 8px;
+      font-weight: 600; font-size: 0.92rem; cursor: pointer; transition: background 0.2s;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .btn-test { background: #10b981; color: white; }
-    .btn-close { background: #ef4444; color: white; }
+    .btn-close { background: #f1f5f9; color: #475569; }
+    .btn-close:hover { background: #e2e8f0; }
   </style>
 </head>
 <body>
@@ -42,16 +53,16 @@
 
   <div id="camera-modal">
     <div class="camera-box">
-      <!-- Dấu hiệu nhận biết đã lên code mới: Tiêu đề phải hiện chữ BẢN V2 -->
-      <div class="camera-title" id="modal-user-title">QUÉT MÃ QR CHẤM CÔNG (BẢN V2)</div>
-      <div id="status-log">Đang khởi tạo...</div>
+      <div class="camera-header">
+        <div class="camera-title" id="modal-user-title">Quét Mã QR Chấm Công</div>
+        <span style="font-size: 1.2rem; cursor: pointer; color: #94a3b8;" onclick="dongCuaSo()">&times;</span>
+      </div>
+      
+      <div id="status-log">⏳ Đang khởi động hệ thống...</div>
+      
       <div id="reader"></div>
       
-      <!-- Nút bấm test ghi thẳng vào Sheet không cần qua Camera -->
-      <button class="btn-pill btn-test" onclick="guiDuLieuVeSheet('MA_QR_TEST_OK')">
-        Bấm Ghi Thử Vào Sheet Ngay
-      </button>
-      <button class="btn-pill btn-close" onclick="dongCuaSo()">Đóng Cửa Sổ</button>
+      <button class="btn-pill btn-close" onclick="dongCuaSo()">Đóng Camera</button>
     </div>
   </div>
 
@@ -65,24 +76,25 @@
 
     let html5QrCode = null;
     let daQuetXong = false;
-    let currentStaff = { maNV: 'NV001', hoTen: 'Nguyễn Văn An' };
+    let currentStaff = { maNV: 'NV001', hoTen: 'Nhân viên' };
     let currentGPS = { lat: 0, lng: 0 };
 
     const cameraModal = document.getElementById('camera-modal');
     const statusLog = document.getElementById('status-log');
     const readerDiv = document.getElementById('reader');
 
-    function setLog(msg, bg = '#e0f2fe', color = '#0369a1') {
+    function setLog(msg, bg = '#f0f9ff', color = '#0284c7', border = '#bae6fd') {
       statusLog.style.background = bg;
       statusLog.style.color = color;
-      statusLog.innerText = msg;
+      statusLog.style.borderColor = border;
+      statusLog.innerHTML = msg;
     }
 
     window.addEventListener('message', function(event) {
       if (event.data && event.data.action === 'OPEN_QR_SCANNER') {
         currentStaff.maNV = event.data.maNV || 'NV001';
-        currentStaff.hoTen = event.data.hoTen || 'Nguyễn Văn An';
-        document.getElementById('modal-user-title').innerText = "Chấm công: " + currentStaff.hoTen + " (V2)";
+        currentStaff.hoTen = event.data.hoTen || 'Nhân viên';
+        document.getElementById('modal-user-title').innerText = "Chấm công: " + currentStaff.hoTen;
         moPopupVaLayGPS();
       }
     });
@@ -91,21 +103,21 @@
       daQuetXong = false;
       cameraModal.style.display = 'flex';
       readerDiv.style.display = 'block';
-      setLog("Đang lấy tọa độ GPS và mở Camera...");
+      setLog("📍 Đang định vị GPS và khởi động Camera...");
 
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             currentGPS.lat = pos.coords.latitude;
             currentGPS.lng = pos.coords.longitude;
-            setLog(`Đã khóa GPS (${currentGPS.lat.toFixed(4)}, ${currentGPS.lng.toFixed(4)}). Đưa mã QR vào khung!`);
+            setLog(`🎯 Đã khóa GPS. Hãy đưa mã QR vào khung ngắm!`);
             batCamera();
           },
           (err) => {
-            setLog("Không lấy được GPS, đang mở Camera...", "#fef3c7", "#b45309");
+            setLog("⚠️ Không lấy được GPS, đang mở Camera trực tiếp...", "#fef3c7", "#b45309", "#fde68a");
             batCamera();
           },
-          { enableHighAccuracy: true, timeout: 4000, maximumAge: 0 }
+          { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
         );
       } else {
         batCamera();
@@ -126,13 +138,13 @@
             try { html5QrCode.stop(); } catch(e) {}
           }
         ).catch(err => {
-          setLog("Chưa mở được Camera. Hãy bấm nút màu xanh lá bên dưới để test ghi Sheet!", "#fef3c7", "#b45309");
+          setLog("❌ Không thể bật Camera. Hãy cấp quyền Camera trên trình duyệt!", "#fee2e2", "#b91c1c", "#fecaca");
         });
       } catch (e) {}
     }
 
     function guiDuLieuVeSheet(qrCode) {
-      setLog(`Đang ghi mã [${qrCode}] vào Sheet ChamCong...`, "#fef3c7", "#b45309");
+      setLog(`🔄 Đang ghi mã [${qrCode}] vào Google Sheets...`, "#fef3c7", "#b45309", "#fde68a");
 
       const url = GAS_WEB_APP_URL 
         + "?action=chamcong"
@@ -149,16 +161,17 @@
           try {
             const resObj = JSON.parse(text);
             if (resObj.status === 'success') {
-              setLog("✅ " + resObj.message, "#d1fae5", "#065f46");
+              setLog("✅ " + resObj.message, "#d1fae5", "#065f46", "#a7f3d0");
+              setTimeout(dongCuaSo, 2000); // Tự động đóng sau 2 giây khi thành công
             } else {
-              setLog("❌ " + resObj.message, "#fee2e2", "#b91c1c");
+              setLog("❌ " + resObj.message, "#fee2e2", "#b91c1c", "#fecaca");
             }
           } catch (err) {
-            setLog("⚠️ Bạn cần cập nhật Code.gs có hàm doGet nhận tham số action=chamcong và Deploy Phiên bản mới!", "#fee2e2", "#b91c1c");
+            setLog("⚠️ Phản hồi từ máy chủ không hợp lệ.", "#fee2e2", "#b91c1c", "#fecaca");
           }
         })
         .catch(err => {
-          setLog("❌ Lỗi đường truyền: " + err.toString(), "#fee2e2", "#b91c1c");
+          setLog("❌ Lỗi kết nối đường truyền mạng.", "#fee2e2", "#b91c1c", "#fecaca");
         });
     }
 
@@ -167,6 +180,8 @@
       if (html5QrCode) {
         try { html5QrCode.stop(); } catch(e) {}
       }
+      // Tự động làm mới lại trang HRM bên trong để cập nhật bảng lịch sử chấm công mới nhất
+      document.getElementById('hrm-frame').contentWindow.location.reload();
     }
   </script>
 </body>
