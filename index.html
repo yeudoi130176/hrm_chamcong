@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Hệ Thống Quản Trị Nhân Sự HRM</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body, html { width: 100%; height: 100%; overflow: hidden; background: #f0f9ff; }
+    
+    /* Khung hiển thị toàn màn hình ứng dụng HRM từ Google Apps Script */
+    #hrm-frame { width: 100%; height: 100%; border: none; display: block; }
+
+    /* Lớp phủ Popup Camera chỉ bật lên khi bấm nút trong HRM */
+    #camera-modal {
+      display: none; position: fixed; inset: 0; z-index: 99999;
+      background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; padding: 16px;
+    }
+    .camera-box {
+      background: white; width: 100%; max-width: 400px; border-radius: 18px;
+      padding: 20px; text-align: center; box-shadow: 0 15px 30px rgba(0,0,0,0.25);
+    }
+    .camera-title { color: #0284c7; font-weight: 700; font-size: 1.1rem; margin-bottom: 14px; }
+    #reader { width: 100%; border-radius: 12px; overflow: hidden; border: 2px dashed #38bdf8; min-height: 240px; margin-bottom: 16px; background: #f8fafc; }
+    
+    .btn-close-pill {
+      height: 40px; width: 100%; border: none; border-radius: 999px;
+      background: #ef4444; color: white; font-weight: 600; font-size: 0.95rem; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- THAY LINK WEB APP GOOGLE APPS SCRIPT CỦA ANH VÀO THUỘC TÍNH SRC DƯỚI ĐÂY -->
+  <iframe id="hrm-frame" src="https://script.google.com/macros/s/AKfycbzdPmvfpGlZm-OyN4RVkwp_H3jAjN6dQ_xi5xpRn5iaDlYPc7CbjdE4HHeRapfogbaXeQ/exec"></iframe>
+
+  <!-- Popup Camera nằm chờ sẵn -->
+  <div id="camera-modal">
+    <div class="camera-box">
+      <div class="camera-title">Đưa mã QR vào khung ngắm</div>
+      <div id="reader"></div>
+      <button class="btn-close-pill" onclick="dongCamera()">Đóng Camera</button>
+    </div>
+  </div>
+
+  <script>
+    let html5QrCode;
+    const hrmFrame = document.getElementById('hrm-frame');
+    const cameraModal = document.getElementById('camera-modal');
+
+    // Nhận tín hiệu mở Camera từ nút bấm bên trong phân hệ Chấm công
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.action === 'OPEN_QR_SCANNER') {
+        moCamera();
+      }
+    });
+
+    function moCamera() {
+      cameraModal.style.display = 'flex';
+      html5QrCode = new Html5Qrcode("reader");
+      
+      html5QrCode.start(
+        { facingMode: "environment" }, // Mở camera sau của điện thoại
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        (decodedText) => {
+          // Ngay khi quét trúng mã QR -> Tắt camera và gửi mã vào trong HRM
+          dongCamera();
+          hrmFrame.contentWindow.postMessage({
+            action: 'QR_SCAN_RESULT',
+            qrCode: decodedText
+          }, '*');
+        }
+      ).catch(err => {
+        alert("Không thể bật Camera. Vui lòng cho phép trình duyệt truy cập Camera!");
+        dongCamera();
+      });
+    }
+
+    function dongCamera() {
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          html5QrCode.clear();
+          cameraModal.style.display = 'none';
+        }).catch(() => {
+          cameraModal.style.display = 'none';
+        });
+      } else {
+        cameraModal.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>
