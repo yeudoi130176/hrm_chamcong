@@ -163,9 +163,10 @@
             if (resObj.status === 'success') {
               setLog("✅ " + resObj.message, "#d1fae5", "#065f46", "#a7f3d0");
               
-              // Tự động báo cho giao diện HRM bên trong load lại dữ liệu mới nhất
-              document.getElementById('hrm-frame').contentWindow.postMessage({ action: 'AUTO_REFRESH_TABLE' }, '*');
+              // 1. KÍCH HOẠT LẬP TỨC: Gọi hàm tải lại dữ liệu trực tiếp bên trong giao diện HRM (GAS)
+              document.getElementById('hrm-frame').contentWindow.taiLaiDuLieu();
               
+              // 2. Tự động đóng cửa sổ sau 2 giây
               setTimeout(dongCuaSo, 2000); 
             } else {
               setLog("❌ " + resObj.message, "#fee2e2", "#b91c1c", "#fecaca");
